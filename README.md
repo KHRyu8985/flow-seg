@@ -1,42 +1,51 @@
-[project]
-name = "flow-seg"
-version = "0.1.0"
-description = "Flow-based segmentation"
-readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
- "autorootcwd>=1.0.1",
- "dvclive>=3.48.5",
- "einops>=0.8.1",
- "ipykernel==6.30.0",
- "jinja2",
- "lightning[pytorch-extra]>=2.5.5",
- "markupsafe",
- "matplotlib==3.10.3",
- "monai>=1.5.0",
- "natten==0.21.0",
- "numpy==2.1.2",
- "opencv-python>=4.12.0.88",
- "pandas>=2.3.1",
- "pillow==11.0.0",
- "scikit-image>=0.25.2",
- "scipy>=1.16.1",
- "simpleitk>=2.5.2",
- "tensorboard>=2.20.0",
- "timm>=1.0.19",
- "torch>=2.7.0",
- "torchaudio>=2.7.0",
- "torchmetrics>=1.8.2",
- "torchvision>=0.22.0",
- "tqdm>=4.66.5",
- "lpips>=0.1.4",
- "torchdiffeq>=0.2.5",
-]
+# Flow-Seg
 
-[[tool.uv.index]]
-url = "https://download.pytorch.org/whl/nightly/cu128"
-explicit = true
+Flow-based segmentation 프로젝트
 
-[[tool.uv.index]]
-url = "https://pypi.org/simple/"
-default = true
+## 설치 방법
+
+### 요구사항
+- Python >= 3.12
+- [uv](https://github.com/astral-sh/uv) 패키지 매니저
+
+### 설치
+
+```bash
+# uv 설치 (미설치 시)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 의존성 설치
+uv sync
+```
+
+## 프로젝트 구조
+
+```
+flow-seg/
+├── configs/              # 설정 파일
+│   ├── diffusion/       # Diffusion 모델 설정
+│   ├── flow/            # Flow 모델 설정
+│   └── supervised/      # Supervised 모델 설정
+├── data/                # 데이터셋 디렉토리
+├── scripts/             # 학습 스크립트
+│   ├── train_diffusion_model.py
+│   ├── train_flow_model.py
+│   ├── train_supervised_model.py
+│   └── lightning_utils.py
+├── src/                 # 소스 코드
+│   ├── archs/          # 모델 아키텍처
+│   │   ├── diffusion_model.py
+│   │   ├── flow_model.py
+│   │   ├── supervised_model.py
+│   │   ├── components/  # 모델 컴포넌트
+│   │   └── unet/        # UNet 구현
+│   ├── data/           # 데이터 로더
+│   ├── losses/         # 손실 함수
+│   ├── metrics/        # 평가 지표
+│   ├── loggers/        # 로깅 유틸리티
+│   └── utils/          # 유틸리티 함수
+├── utest/              # 단위 테스트
+├── pyproject.toml      # 프로젝트 설정
+└── uv.lock            # 의존성 락 파일
+```
+
