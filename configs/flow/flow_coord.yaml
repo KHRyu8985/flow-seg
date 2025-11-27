@@ -1,0 +1,57 @@
+# Flow matching configuration for coordinate-aware vessel segmentation
+
+model:
+  arch_name: dhariwal_unet_4channel
+  image_size: 512
+  patch_plan:
+    - [320, 6]
+    - [384, 5]
+    - [416, 2]
+    - [512, 1]
+  dim: 32
+  timesteps: 30
+  num_ensemble: 5
+  sigma: 0.15
+  learning_rate: 2e-4
+  weight_decay: 1e-5
+  num_classes: 2
+  experiment_name: flow_coord
+  data_name: xca
+  log_image_enabled: true
+  log_image_names:
+    - '00036.png'
+    - '00050.png'
+    - '00063.png'
+
+data:
+  name: xca_flow
+  train_dir: data/xca_dataset_split/train
+  val_dir: data/xca_dataset_split/val
+  test_dir: data/xca_dataset_split/test
+  train_bs: 2
+  image_size: 512
+
+trainer:
+  max_epochs: 1500
+  accelerator: gpu
+  devices: 1
+  enable_progress_bar: false
+  check_val_every_n_epoch: 50
+  gradient_clip_val: 1.0
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: val/dice
+        mode: max
+        save_last: true
+        verbose: true
+    - class_path: src.callbacks.ema_callback.EMAWeightAveraging
+      init_args:
+        decay: 0.99
+  logger:
+    class_path: lightning.pytorch.loggers.TensorBoardLogger
+    init_args:
+      save_dir: lightning_logs
+      name: xca_flow_coord
+      version: flow_coord
+
