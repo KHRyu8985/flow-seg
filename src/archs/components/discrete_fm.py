@@ -1,4 +1,4 @@
-import autorootcwd0
+import autorootcwd  # noqa: F401
 from __future__ import annotations
 from torch import nn
 from torch.nn import functional as F
@@ -23,13 +23,6 @@ def sample_p(pt: Prob) -> Img:
     pt = rearrange(pt, 'b c h w -> (b h w) c')
     xt = torch.multinomial(pt, 1)
     return xt.reshape(b, h, w)
-
-class Coupling:
-    def __init__(self) -> None:
-        pass
-
-    def sample(self, x1: Img) -> tuple[Img, Img]:
-        raise NotImplementedError
 
 class Coupling:
     def __init__(self) -> None:
@@ -243,89 +236,3 @@ class CorrectorSampler(DiscreteSampler):
         h = torch.tensor(h, device=discretefm.device)
         h_adapt = torch.minimum(h, coeff)
         return h_adapt
-
-#@title ⏳ Summary: please run this cell which contains the ```DiscreteFM``` class
-
-class DiscreteFM(L.LightningModule):
-    def __init__(self, dict_size: int,  backbone: nn.Module, coupling: Coupling, kappa: KappaScheduler) -> None:
-        super().__init__()
-        self.dict_size = dict_size
-        self.backbone = backbone
-        self.coupling = coupling
-        self.kappa = kappa
-
-    def forward(self, t: float | torch.Tensor, x: Img) -> Img:
-        return self.backbone(t, x)
-
-    def forward_u(self, t: float | torch.Tensor, xt: Img) -> Prob:
-        dirac_xt = x2prob(xt, self.dict_size)
-        p1t = torch.softmax(self(t.flatten(), xt), dim=1)
-
-        kappa_coeff = self.kappa.derivative(t) / (1 - self.kappa(t))
-        return kappa_coeff * (p1t - dirac_xt)
-
-    def backward_u(self, t: float | torch.Tensor, xt: Img) -> Prob:
-        dirac_xt = x2prob(xt, self.dict_size)
-
-        # TODO: adapt to Ccoupling
-        x0 = torch.zeros_like(xt)
-        p = x2prob(x0, self.dict_size)
-
-        kappa_coeff = self.kappa.derivative(t) / self.kappa(t)
-        return kappa_coeff * (dirac_xt - p)
-
-    def bar_u(self, t: float | torch.Tensor, xt: Img, alpha_t: float | torch.Tensor, beta_t: float | torch.Tensor) -> Prob:
-        return alpha_t * self.forward_u(t, xt) - beta_t * self.backward_u(t, xt)
-
-    def step(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
-        # sample x0, x1 w.r.t. coupling
-        x0, x1 = self.coupling.sample(batch[0])
-
-        # sample t ~ U[0, 1]
-        t = torch.rand(len(x0), device=self.device)
-
-        # sample pt(.|x0, x1)
-        dirac_x0 = x2prob(x0, self.dict_size)
-        dirac_x1 = x2prob(x1, self.dict_size)
-        xt = sample_cond_pt(dirac_x0, dirac_x1, t, self.kappa)
-
-        # predict p1|t, i.e. (VF - Denoiser)
-        p1t = self(t, xt)
-        loss = F.cross_entropy(p1t, x1.long())
-        return loss
-
-    def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
-        loss = self.step(batch)
-        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        return loss
-
-    def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
-        loss = self.step(batch)
-        self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        return loss
-
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=5e-4)
-
-DICT_SIZE = 10
-MODEL_CHANNELS = 64
-unet =  SongUnet(img_resolution = 32,
-    in_channels = 1,
-    out_channels = DICT_SIZE,
-    model_channels= MODEL_CHANNELS)
-coupling = Ucoupling()
-kappa = CubicScheduler()
-
-
-discretefm = DiscreteFM(DICT_SIZE, unet, coupling, kappa)
-dm = DigitDataModule(dict_size=DICT_SIZE, batch_size=200)
-dm.setup()
-trainer = L.Trainer(max_epochs=1, logger=TensorBoardLogger('lightning_logs'), devices=1)
-
-# UNCOMMENT HERE TO TRAIN MODEL
-trainer.fit(discretefm, dm)
-
-
-# # save model
-# save_path = f'discretefm-{MODEL_CHANNELS}.pt'
-# torch.save(discretefm.state_dict(), save_path)

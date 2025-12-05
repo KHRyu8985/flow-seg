@@ -190,8 +190,8 @@ def visualize_flow_dataset(loader, dataset_name='xca_flow', num_samples=5):
             label = batch["label"][b].squeeze(0)  # (1, H, W) -> (H, W)
 
             print(f"Sample {plotted+1} - {batch['name'][b]}:")
-            print(f"  Image shape: {batch["image"].shape}, range: [{image.min():.3f}, {image.max():.3f}]")
-            print(f"  Label shape: {batch["label"].shape}, range: [{label.min():.3f}, {label.max():.3f}]")
+            print(f"  Image shape: {image.shape}, range: [{image.min():.3f}, {image.max():.3f}]")
+            print(f"  Label shape: {label.shape}, range: [{label.min():.3f}, {label.max():.3f}]")
             
             if has_geometry:
                 geometry = batch["geometry"][b].squeeze(0)  # (1, H, W) -> (H, W)

@@ -90,38 +90,29 @@ class FlowCoordModel(L.LightningModule):
         self.log_image_names = log_image_names if log_image_names is not None else ['00036.png']
 
     def training_step(self, batch, batch_idx):
-        images = batch['image']
+        images = batch['image']  # condition
         labels = batch['label']
-        geometry = batch['geometry']
+        geometry = batch['geometry']  # target
         
         patch_size, num_patches = select_patch_params(self.hparams.patch_plan)
         
-        # Prepare 4-channel input: [image, noise]
-        noise = torch.randn_like(images)
-        input_2ch = torch.cat([images, noise], dim=1)
-        
-        # Prepare 4-channel target: [image*mask, geometry, coordx, coordy]
-        target_image = images * labels
-        target_4ch = torch.cat([target_image, geometry], dim=1)
+        # Prepare noise (x0) and target geometry (x1)
+        noise = torch.randn_like(geometry)
         
         # Random patch extraction
-        input_4ch, target_4ch = random_patch_batch(
-            [input_2ch, target_4ch], patch_size, num_patches
+        noise, geometry, images = random_patch_batch(
+            [noise, geometry, images], patch_size, num_patches
         )
         
-        # Flow matching
-        t, xt, ut = self.flow_matcher.sample_location_and_conditional_flow(input_4ch, target_4ch)
-        v = self.unet(xt, t, class_labels=None)
+        # Flow matching: noise (x0) -> geometry (x1)
+        t, xt, ut = self.flow_matcher.sample_location_and_conditional_flow(noise, geometry)
+        
+        # UNet forward: (x=xt, time=t, cond=images)
+        # dhariwal_concat_unet expects: forward(x, time, cond)
+        v = self.unet(xt, t, images)  # xt: noisy geometry, images: condition
         
         # Compute loss
-        v_img_mask = v[:, 0:1, :, :]
-        v_geometry = v[:, 1:2, :, :]
-        ut_img_mask = ut[:, 0:1, :, :]
-        ut_geometry = ut[:, 1:2, :, :]
-        
-        loss_img = torch.abs(v_img_mask - ut_img_mask).mean()
-        loss_geom = torch.abs(v_geometry - ut_geometry).mean()
-        loss = 0.1 * loss_img + 0.9 * loss_geom  # enforce geometry
+        loss = torch.abs(v - ut).mean()
         
         # Log
         self.log('train/loss', loss, prog_bar=True)
