@@ -347,55 +347,6 @@ class FFTConditioning(nn.Module):
         return self.block(c)
 
 
-# ====== NATTEN Conditioning (Proposed) ======
-class NATTENConditioning(nn.Module):
-    """NATTEN-based conditioning module for proposed model"""
-    def __init__(self, fmap_size, dim):
-        super().__init__()
-        self.dim = dim
-        self.default_fmap_size = fmap_size
-        # Initialize with default size, will be resized dynamically if needed
-        self.ff_parser_attn_map = nn.Parameter(torch.ones(dim, fmap_size, fmap_size))
-        self.norm_input = LayerNorm(dim, bias=True)
-        self.norm_condition = LayerNorm(dim, bias=True)
-        self.block = ResnetBlock(dim, dim)
-
-    def forward(self, x, c):
-        """
-        Args:
-            x: Main path features (noisy mask features)
-            c: Conditional features (image features)
-        """
-        dtype = x.dtype
-        b, c_dim, h, w = x.shape
-        
-        # FF-parser: modulate high frequencies
-        x_fft = fft2(x)
-        
-        # Dynamically resize attention map if needed
-        if h != self.default_fmap_size or w != self.default_fmap_size:
-            # Resize attention map to match input size
-            attn_map = torch.nn.functional.interpolate(
-                self.ff_parser_attn_map.unsqueeze(0), 
-                size=(h, w), 
-                mode='bilinear', 
-                align_corners=False
-            ).squeeze(0)
-        else:
-            attn_map = self.ff_parser_attn_map
-        
-        x_fft = x_fft * attn_map
-        x = ifft2(x_fft).real.type(dtype)
-        
-        # Eq 3 in paper: c = (norm(x) * norm(c)) * c
-        normed_x = self.norm_input(x)
-        normed_c = self.norm_condition(c)
-        c = (normed_x * normed_c) * c
-        
-        # Extra block for information integration
-        return self.block(c)
-
-
 # ====== SegDiff UNet ======
 class SegDiffUNet(nn.Module):
     """SegDiff: RRDB-based conditioning, F(x_t) + G(I) fed to UNet"""

@@ -119,7 +119,7 @@ def extract_combined_uncertainty_map(gt_b, gt_t, target_c_label):
 @torch.no_grad()
 def to_geometry(mask: torch.Tensor,
                 use_thickness: bool = True,
-                target_c_label: str = "hh",
+                target_c_label: str = "h",
                 kernel_size: int = None,
                 kernel_ratio: float = 1.0) -> torch.Tensor:
     """

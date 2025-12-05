@@ -1,18 +1,18 @@
-"""Flow model training/testing entry point.
+"""Flow model training/testing entry point (simple: image + noise -> geometry).
 
 Usage:
-    python scripts/train_flow_model.py --config configs/flow/flow_coord.yaml
-    python scripts/train_flow_model.py --config configs/flow/flow_coord.yaml --resume path/to/checkpoint.ckpt
+    python scripts/train_flow_model.py --config configs/flow/flow_model.yaml
+    python scripts/train_flow_model.py --config configs/flow/flow_model.yaml --resume path/to/checkpoint.ckpt
 
 Script (nohup bash):
-nohup bash -c 'source .venv/bin/activate && uv run python scripts/train_flow_model.py --config configs/flow/flow_coord.yaml' > scripts/logs/flow_coord_train.log 2>&1 &
+nohup bash -c 'source .venv/bin/activate && uv run python scripts/train_flow_model.py --config configs/flow/flow_model.yaml' > scripts/logs/flow_model_train.log 2>&1 &
 """
 
 import torch
 import autorootcwd  # noqa: F401
 from lightning.pytorch.cli import LightningCLI
 
-from src.archs.flow_model import FlowCoordModel
+from src.archs.flow_model import FlowModel
 from src.callbacks.ema_callback import EMAWeightAveraging  # noqa: F401 - Register callback
 from scripts.lightning_utils import (
     setup_environment,
@@ -43,7 +43,7 @@ def main():
     DataModuleClass = get_datamodule_class(config_path)
     
     cli = LightningCLI(
-        FlowCoordModel,
+        FlowModel,
         DataModuleClass,
         save_config_kwargs={'overwrite': True},
     )
@@ -60,4 +60,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

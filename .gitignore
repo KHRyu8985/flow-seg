@@ -44,7 +44,7 @@ tensorboard/
 # Data directories
 data/
 datasets/
-
+nbs/
 # OS
 .DS_Store
 Thumbs.db

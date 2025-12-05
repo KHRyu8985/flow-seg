@@ -1,4 +1,4 @@
-import autorootcwd
+import autorootcwd  # noqa: F401
 import os
 from src.utils.registry import DATASET_REGISTRY
 from src.utils.visualize_dataloader import visualize_flow_dataset
@@ -10,7 +10,10 @@ def main():
     
     # 데이터 모듈 생성 및 설정
     print("Creating XCA Flow DataModule...")
-    dm = DATASET_REGISTRY.get("xca_flow")()
+    dm_class = DATASET_REGISTRY.get("xca_flow")
+    dm = dm_class(
+        train_bs=2,
+    )
     dm.setup()
     
     # 각 데이터로더 확인
